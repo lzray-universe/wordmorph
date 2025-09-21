@@ -146,7 +146,7 @@ npm run preview
 
 ---
 
-## 3. 搜索：**双向 BFS（Bidirectional BFS）** + 有界剪枝
+## 3. 搜索：**BFS** + 有界剪枝
 
 函数 `BFS(start, target, neighborFn, cap, maxStates=200000)`：
 
