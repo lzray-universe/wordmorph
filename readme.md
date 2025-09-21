@@ -1,7 +1,7 @@
 
 
 # Word Morph
-
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 一个“单词变形（Word Morph）”小站：
 给定起点词与终点词，玩家每步只能做**允许的微操作**，并且每一步都必须仍是词表中的真实单词，目标是在限定步数内到达终点。
 
