@@ -134,6 +134,46 @@ async function fetchGlosbeFallback(word: string, signal: AbortSignal) {
   }
 }
 
+type OpenRouterContentObject = {
+  type?: string | null
+  text?: string | null
+  content?: string | string[] | null
+}
+
+type OpenRouterContent = string | OpenRouterContentObject
+
+type OpenRouterChoice = {
+  message?: {
+    content?: OpenRouterContent | OpenRouterContent[] | null
+  } | null
+  content?: OpenRouterContent | OpenRouterContent[] | null
+}
+
+type OpenRouterResponse = {
+  choices?: (OpenRouterChoice | null | undefined)[] | null
+}
+
+function normalizeOpenRouterContent(content: unknown): string | null {
+  if (!content) return null
+  if (typeof content === 'string') return content.trim() || null
+  if (Array.isArray(content)) {
+    const parts: string[] = []
+    for (const item of content) {
+      const normalized = normalizeOpenRouterContent(item)
+      if (normalized) parts.push(normalized)
+    }
+    const joined = parts.join('\n').trim()
+    return joined || null
+  }
+  if (typeof content === 'object') {
+    const maybe = content as OpenRouterContentObject
+    if (typeof maybe.text === 'string' && maybe.text.trim()) return maybe.text.trim()
+    const inner = maybe.content
+    if (inner) return normalizeOpenRouterContent(inner)
+  }
+  return null
+}
+
 async function translateEnglishMeaning(
   text: string,
   signal: AbortSignal
@@ -165,11 +205,17 @@ async function translateEnglishMeaning(
       console.error('Meaning translation failed: HTTP', res.status)
       return null
     }
-    const data = await res.json()
-    const content = data?.choices?.[0]?.message?.content
-    if (typeof content !== 'string') return null
-    const trimmed = content.trim()
-    return trimmed || null
+    const data = (await res.json()) as OpenRouterResponse
+    const choices = Array.isArray(data?.choices) ? data.choices : []
+    for (const choice of choices) {
+      if (!choice) continue
+      const candidates = [choice.message?.content, choice.content]
+      for (const candidate of candidates) {
+        const normalized = normalizeOpenRouterContent(candidate)
+        if (normalized) return normalized
+      }
+    }
+    return null
   } catch (err: any) {
     if (err?.name === 'AbortError') return null
     console.error('Meaning translation failed:', err)
