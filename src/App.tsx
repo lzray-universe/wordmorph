@@ -16,10 +16,12 @@ const WORKER_BASE =
   'https://wordworker.lzraylzraylzray.workers.dev/define?cors=1&word='
 
 const DICTIONARY_API_BASE = 'https://api.dictionaryapi.dev/api/v2/entries/en/'
-const TRANSLATE_PROXY_BASE =
-  'https://cors-header-proxy.lzraylzraylzray.workers.dev/corsproxy?apiurl='
-const GOOGLE_TRANSLATE_API_BASE =
-  'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q='
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+const OPENROUTER_MODEL = 'openai/gpt-5-nano'
+const OPENROUTER_API_KEY =
+  (import.meta.env?.VITE_OPENROUTER_API_KEY as string | undefined) || ''
+const TRANSLATE_PROMPT_PREFIX =
+  '翻译这个单词的解释到中文，你只需给我中文，不要任何其他内容：'
 const GLOSBE_WORKER_BASE = 'https://gloworker.lzraylzraylzray.workers.dev/?word='
 
 const MIN_LEN = 3
@@ -137,20 +139,36 @@ async function translateEnglishMeaning(
   signal: AbortSignal
 ): Promise<string | null> {
   if (!text.trim()) return null
+  if (!OPENROUTER_API_KEY) {
+    console.warn('OpenRouter API key is not configured.')
+    return null
+  }
   try {
-    const externalUrl = GOOGLE_TRANSLATE_API_BASE + encodeURIComponent(text)
-    const proxiedUrl = TRANSLATE_PROXY_BASE + encodeURIComponent(externalUrl)
-    const res = await fetch(proxiedUrl, { signal })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (!Array.isArray(data?.[0])) return null
-    let out = ''
-    for (const chunk of data[0]) {
-      if (Array.isArray(chunk) && typeof chunk[0] === 'string') {
-        out += chunk[0]
-      }
+    const res = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      signal,
+      headers: {
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: OPENROUTER_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: `${TRANSLATE_PROMPT_PREFIX}${text}`,
+          },
+        ],
+      }),
+    })
+    if (!res.ok) {
+      console.error('Meaning translation failed: HTTP', res.status)
+      return null
     }
-    const trimmed = out.trim()
+    const data = await res.json()
+    const content = data?.choices?.[0]?.message?.content
+    if (typeof content !== 'string') return null
+    const trimmed = content.trim()
     return trimmed || null
   } catch (err: any) {
     if (err?.name === 'AbortError') return null

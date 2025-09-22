@@ -90,8 +90,8 @@ npm run preview
 * `WORKER_BASE = https://wordworker.../define?word=`：Cloudflare Worker（返回 `{ meaning, etymology }`）。
 * 若无释义，回退到 **DictionaryAPI**：`https://api.dictionaryapi.dev/...`
 
-  * 若只拿到英文释义，会通过 **Google Translate（免费接口）** 翻到中文：
-    `TRANSLATE_PROXY_BASE = https://cors-header-proxy.../corsproxy?apiurl=...`
+  * 若只拿到英文释义，会通过 **OpenRouter AI 翻译**（`openai/gpt-5-nano`）转成中文：
+    需在运行环境中设置 `VITE_OPENROUTER_API_KEY`
 * 还配置了 `GLOSBE_WORKER_BASE` 作为另一层兜底。
 
 
