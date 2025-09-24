@@ -18,24 +18,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Install
-        run: npm ci || npm i
-
-      - name: Build
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # 自定义域 -> base 应为 '/', 不要设 GITHUB_PAGES
+      - run: npm run build
         env:
-          GITHUB_PAGES: true
-        run: npm run build
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+          VITE_BASE: "/"   # 仅当你用 VITE_BASE 方案时需要
+      # SPA 404 回退（可选但强烈建议）
+      - run: cp dist/index.html dist/404.html
+      # 自定义域名（可选，通常仅靠仓库 Pages 的 Custom domain 也行）
+      - run: echo wordmorph.lzray.com > dist/CNAME
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
@@ -46,6 +43,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4
